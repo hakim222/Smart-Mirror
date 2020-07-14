@@ -1,12 +1,18 @@
 import cv2,utils,time
 import numpy as np
 from scipy import signal
+from PIL import ImageFont, ImageDraw, Image  
+from datetime import datetime
 
 #%% User Settings
 use_prerecorded		= False
 fs					= 30  # Sampling Frequency
 
 #%% Parameters
+
+font1 = ImageFont.truetype("Roboto-Regular.ttf", 80)
+font2 = ImageFont.truetype("Roboto-Regular.ttf", 60)
+font3 = ImageFont.truetype("Roboto-Regular.ttf", 35)
 
 haar_cascade_path 	= "haarcascade_frontalface_default.xml"
 face_cascade 		= cv2.CascadeClassifier(haar_cascade_path)
@@ -25,6 +31,8 @@ mean_colors             = []
 timestamps 	            = []
 
 mean_colors_resampled   = np.zeros((3,1))
+
+bpm = 0
 
 #%% Main loop
 
@@ -97,16 +105,62 @@ while True:
 		snr       = utils.calculateSNR(normalized_amplitude,bpm_index)
 		utils.put_snr_bpm_onframe(bpm,snr,frame)
 
-	cv2.imshow('Camera',frame) 
+	# cv2.imshow('Camera',frame) 
 	
+    # get the current time
+	now = datetime.now()
+	current_date = now.strftime("%d %b %Y")
+	current_time = now.strftime("%H:%M %p")
+	current_day = now.strftime("%A")
+
+	# get bpm and temperature
+	bpm = int(bpm)
+	degree = u'\u00B0C'
+	temperature = "29.5" + degree
+
+	# Create a black image
+	img = np.zeros((768,1366,3), np.uint8)
+	
+	# convert to pil for custom font and draw it on the black screen window
+	pil_img = Image.fromarray(img)
+	draw = ImageDraw.Draw(pil_img)
+	draw.text((10, 50), current_day, font=font1)
+	draw.text((25, 130), current_date, font=font3)
+	draw.text((15, 180), current_time, font=font2)
+	
+	# positioning the bpm according to its digit number
+	if bpm < 10:
+		bpm = str(bpm)
+		draw.text((1150, 120), bpm, font=font2)
+		draw.text((1195, 120), " bpm", font=font2)
+	elif bpm > 9 and bpm < 100:
+		bpm = str(bpm)
+		draw.text((1115, 120), bpm, font=font2)
+		draw.text((1195, 120), " bpm", font=font2)
+	else:
+		bpm = str(bpm)
+		draw.text((1080, 120), bpm, font=font2)
+		draw.text((1195, 120), " bpm", font=font2)
+
+	draw.text((1150, 180), temperature, font=font2)
+	img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)  
+
+	# Make the display window fullscreen
+	cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
+	cv2.setWindowProperty('frame', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+	
+	# Display on screen
+	cv2.imshow('frame', img)
+
+	# Exit by pressing q key
 	if cv2.waitKey(1) & 0xFF == ord('q'):
 		break
 
+# Close all windows after q key being pressed
 cap.release() 
 cv2.destroyAllWindows() 
 
-
-
-
-
 #plt.figure()
+
+
+# %%
